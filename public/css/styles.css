@@ -1,0 +1,17 @@
+body {
+	background: #88f;
+	text-align: center;
+}
+
+button {
+	margin: 35px;
+	padding: 10px;
+	background: #b8860b;
+	border: 4px outset #5b61ab;
+	min-width: 160px;
+}
+
+button:active {
+	border: 4px inset #5b615b;
+	background: #876308;
+}
