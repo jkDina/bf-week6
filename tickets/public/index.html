@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>
+		The tickets
+	</title>
+	<link rel="stylesheet" href="./css/styles.css">
+	<script src="./js/abi.json"></script>
+</head>
+<body>
+	<h1>The tickets</h1>
+	<button id='buy_ticket'>Buy a ticket</button>
+	<button id='show_tickets'>Show my tickets</button>
+	<div id="my_tickets" hidden>
+		<div>Amount of tokens: <span></span></div>
+		<ul></ul>
+	</div>
+	<script>
+		var seed = '';
+		var syms = [];
+		for (let i = 0; i < 26; i++) {
+			syms.push(String.fromCharCode(65 + i));
+			syms.push(String.fromCharCode(97 + i));
+		}
+		
+		
+		var web3 = new Web3(web3.currentProvider);
+		var contractAddress  = '0x13a3a4bf353475fdc8621efe2b67d0c6c0770534';
+		var MyContract = web3.eth.contract(abi);
+		var myContractInstance = promisify(MyContract.at(contractAddress));
+	    
+		document.querySelector('#buy_ticket').addEventListener('click', function() {
+			var functionData = myContractInstance.createNewToken.getData(seed);
+			web3.eth.sendTransaction({
+				  to: contractAddress,
+				  from: web3.eth.accounts[0],
+				  data: functionData,
+				  value: web3.toWei(10, "finney")
+			  },
+			  function (error) {
+				  console.log(error);
+			  }
+		  );
+		});
+		document.querySelector('#show_tickets').addEventListener('click', async function() {
+			try {
+				const amount = await myContractInstance.balanceOf(web3.eth.accounts[0]);
+				document.querySelector('#my_tickets').hidden = false;
+				document.querySelector('#my_tickets > div:first-child > span').innerHTML = amount.c[0];
+				
+				let index = 0;
+				document.querySelector('#my_tickets > ul').innerHTML = '';
+				while (index < amount) {
+					let tokenHash = await myContractInstance.tokenByIndex(index);
+					console.log(tokenHash)
+					tokenHash = tokenHash.toString(16);
+					appendToList(tokenHash);
+					index++;
+				}
+				
+			} catch(e) {
+				console.log(e.message);
+			}
+			
+		});
+		
+		document.addEventListener('mousemove', function() {
+			let d = 0;
+			return throttle(function(evt) {
+				d += ((evt.screenX + evt.screenY) * (Date.now() % 10**2) + (Date.now() % 10**6)) % 2**50;
+				console.log(seed, d);
+				seed += syms[d % syms.length] + d.toString().slice(1, Date.now() % 10);
+				seed = seed.slice(-150);
+			})
+		}());
+		
+		function promisify(item) {
+			if (typeof item === 'function') {
+				let func = item;
+				let newFunc = (...args) => new Promise((resolve, reject) => {
+					let callback = (err, data) => err === null ? resolve(data) : reject(err);
+					func.apply(this, [...args, callback]);
+				});
+				
+				for (let attr in func) {
+					newFunc[attr] = func[attr];
+				}
+				return newFunc;
+				
+			} else if (typeof item === 'object') {
+				for (let key in item) {
+					if (typeof item[key] === 'function') {
+						item[key] = promisify(item[key]);
+					}
+				}
+			}
+			return item;
+		}
+		
+		
+		function throttle(func, timeout = 50) {
+			lastCallTime = 0;
+			return (...args) => {
+				let now = Date.now();
+				//console.log(now, lastCallTime, now - lastCallTime);
+				if (now - lastCallTime >= timeout) {
+					lastCallTime = now;
+					return func.apply(this, [...args]);
+				}
+			}
+		}
+		
+		function appendToList(text) {
+			let li = document.createElement('li');
+			li.innerHTML = text;
+			let ul = document.querySelector('#my_tickets > ul');
+			ul.appendChild(li);
+		}
+		
+	</script>
+</body>
+</html>
